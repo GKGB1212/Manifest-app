@@ -1,0 +1,399 @@
+// ------------------------------------------------------------------
+// Manifest — Production database schema (PostgreSQL + Prisma)
+//
+// This mirrors src/lib/types.ts. The app currently persists to the
+// browser (Zustand + localStorage) behind a repository boundary, so this
+// schema can back a real API without changing the UI. Every per-user
+// table carries a userId + composite indexes for the common access
+// patterns (by day, by goal, by recency).
+// ------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Language {
+  en
+  vi
+}
+
+enum ThemeMode {
+  system
+  light
+  dark
+}
+
+enum LifeCategory {
+  wealth
+  career
+  confidence
+  love
+  health
+  spirituality
+  lifestyle
+  travel
+  relationship
+  finance
+}
+
+enum GoalStatus {
+  active
+  achieved
+  paused
+  archived
+}
+
+enum EvidenceKind {
+  sign
+  synchronicity
+  win
+  opportunity
+  progress
+}
+
+enum JournalKind {
+  scripting
+  free
+  reflection
+}
+
+enum FutureHorizon {
+  SIX_MONTHS
+  ONE_YEAR
+  FIVE_YEARS
+}
+
+enum Phase369 {
+  morning
+  afternoon
+  night
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  avatarEmoji String   @default("🌙")
+  timezone    String   @default("UTC")
+  xp          Int      @default(0)
+  level       Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  settings        Settings?
+  affirmations    Affirmation[]
+  affirmationLogs AffirmationLog[]
+  method369       Method369Session[]
+  method55x5      Method55x5Run[]
+  journal         JournalEntry[]
+  gratitude       GratitudeEntry[]
+  futureSelf      FutureSelfLetter[]
+  goals           ManifestationGoal[]
+  evidence        EvidenceItem[]
+  moods           MoodEntry[]
+  visualizations  VisualizationSession[]
+  visionBoards    VisionBoard[]
+  achievements    Achievement[]
+  conversations   CoachConversation[]
+  reminders       Reminder[]
+  streak          Streak?
+  activityDays    ActivityDay[]
+}
+
+model Settings {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language      Language  @default(en)
+  theme         ThemeMode @default(system)
+  largeText     Boolean   @default(false)
+  reduceMotion  Boolean   @default(false)
+  soundEnabled  Boolean   @default(true)
+  backgroundMusic Boolean @default(false)
+  notifications Boolean   @default(false)
+}
+
+model Reminder {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind    String
+  time    String // HH:mm
+  enabled Boolean @default(true)
+
+  @@index([userId])
+}
+
+model Affirmation {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text        String
+  category    LifeCategory
+  isCustom    Boolean      @default(true)
+  isFavorite  Boolean      @default(false)
+  repetitions Int          @default(0)
+  voiceNoteId String?
+  createdAt   DateTime     @default(now())
+  logs        AffirmationLog[]
+
+  @@index([userId, category])
+  @@index([userId, isFavorite])
+}
+
+model AffirmationLog {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  affirmationId String
+  affirmation   Affirmation @relation(fields: [affirmationId], references: [id], onDelete: Cascade)
+  day           String // YYYY-MM-DD
+  count         Int
+  mirrorMode    Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  @@index([userId, day])
+  @@index([affirmationId])
+}
+
+model Method369Session {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day         String
+  intention   String
+  affirmation String
+  morning     Int      @default(0)
+  afternoon   Int      @default(0)
+  night       Int      @default(0)
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, day])
+  @@index([userId])
+}
+
+model Method55x5Run {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  intention   String
+  affirmation String
+  dayCounts   Int[]    @default([0, 0, 0, 0, 0])
+  completed   Boolean  @default(false)
+  startedAt   DateTime @default(now())
+
+  @@index([userId, completed])
+}
+
+model JournalEntry {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        JournalKind
+  title       String
+  body        String
+  emotions    String[]
+  mood        Int?
+  goalId      String?
+  goal        ManifestationGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  tags        String[]
+  voiceNoteId String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId, kind])
+  @@index([userId, createdAt])
+  @@index([goalId])
+}
+
+model GratitudeEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day       String
+  items     String[]
+  mood      Int?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, day])
+  @@index([userId, day])
+}
+
+model FutureSelfLetter {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  horizon      FutureHorizon
+  title        String
+  body         String
+  conversation Json? // [{ role: 'me'|'future', text }]
+  createdAt    DateTime      @default(now())
+
+  @@index([userId, horizon])
+}
+
+model ManifestationGoal {
+  id                String       @id @default(cuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  category          LifeCategory
+  description       String       @default("")
+  desiredOutcome    String       @default("")
+  targetDate        String?
+  importance        Int          @default(3)
+  emotionalIntensity Int         @default(3)
+  status            GoalStatus   @default(active)
+  createdAt         DateTime     @default(now())
+  achievedAt        DateTime?
+
+  milestones Milestone[]
+  evidence   EvidenceItem[]
+  journal    JournalEntry[]
+
+  @@index([userId, status])
+  @@index([userId, category])
+}
+
+model Milestone {
+  id     String   @id @default(cuid())
+  goalId String
+  goal   ManifestationGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title  String
+  done   Boolean  @default(false)
+  doneAt DateTime?
+
+  @@index([goalId])
+}
+
+model EvidenceItem {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId          String?
+  goal            ManifestationGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  kind            EvidenceKind
+  note            String
+  emotionalCharge Int          @default(3)
+  createdAt       DateTime     @default(now())
+
+  @@index([userId, createdAt])
+  @@index([goalId])
+}
+
+model MoodEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day        String
+  mood       Int
+  energy     Int
+  confidence Int
+  stress     Int
+  gratitude  Int
+  selfBelief Int
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, day])
+  @@index([userId, day])
+}
+
+model VisualizationSession {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scriptId     String
+  title        String
+  durationSec  Int
+  completedSec Int
+  completed    Boolean  @default(false)
+  goalId       String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model VisionBoard {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  category  LifeCategory
+  createdAt DateTime     @default(now())
+  items     VisionItem[]
+
+  @@index([userId])
+}
+
+model VisionItem {
+  id      String      @id @default(cuid())
+  boardId String
+  board   VisionBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  image   String // URL or object-storage key
+  caption String      @default("")
+  x       Float       @default(10)
+  y       Float       @default(10)
+
+  @@index([boardId])
+}
+
+model Achievement {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId    String
+  progress   Float     @default(0)
+  unlockedAt DateTime?
+
+  @@unique([userId, badgeId])
+}
+
+model Streak {
+  userId        String  @id
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  current       Int     @default(0)
+  longest       Int     @default(0)
+  lastActiveDay String?
+}
+
+model ActivityDay {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day       String
+  practices String[] // practice ids completed that day
+
+  @@unique([userId, day])
+  @@index([userId, day])
+}
+
+model CoachConversation {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String         @default("Session")
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  messages  CoachMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model CoachMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   CoachConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // 'user' | 'coach'
+  text           String
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
+}
