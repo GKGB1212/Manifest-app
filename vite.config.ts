@@ -5,6 +5,9 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Served from https://<user>.github.io/manifest/ on GitHub Pages.
+  // If your repo has a different name, change this to '/<repo-name>/'.
+  base: process.env.GITHUB_PAGES ? '/manifest/' : '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

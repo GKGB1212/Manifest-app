@@ -41,7 +41,7 @@ export default function App() {
       {!name ? (
         <Onboarding />
       ) : (
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <Suspense fallback={<Loader />}>
             <Routes>
               <Route element={<AppShell />}>
