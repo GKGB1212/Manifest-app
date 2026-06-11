@@ -34,9 +34,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build
-        env:
-          GITHUB_PAGES: 'true' # makes vite use base '/manifest/'
-        run: pnpm build:pages # also writes dist/404.html for SPA routing
+        # GITHUB_REPOSITORY is provided automatically; vite derives the base
+        # path ("/<repo>/") from it. build:pages also writes dist/404.html.
+        run: pnpm build:pages
 
       - uses: actions/upload-pages-artifact@v3
         with:

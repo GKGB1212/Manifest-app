@@ -4,10 +4,13 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
+// On GitHub Actions, GITHUB_REPOSITORY is "owner/repo" — derive the Pages
+// base path ("/repo/") from it automatically so it always matches the repo
+// name (e.g. /Manifest-app/). Locally it stays "/".
+const ghRepo = process.env.GITHUB_REPOSITORY?.split('/')[1];
+
 export default defineConfig({
-  // Served from https://<user>.github.io/manifest/ on GitHub Pages.
-  // If your repo has a different name, change this to '/<repo-name>/'.
-  base: process.env.GITHUB_PAGES ? '/manifest/' : '/',
+  base: ghRepo ? `/${ghRepo}/` : '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
